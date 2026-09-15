@@ -1,0 +1,21 @@
+div id="status"></div>
+</div>
+</div>
+
+<script>
+function startSwap(){
+ const photo=document.getElementById("photo").files[0];
+ const video=document.getElementById("video").files[0];
+
+ if(!photo || !video){
+   document.getElementById("status").innerText=
+   "Please select both a photo and a video.";
+   return;
+ }
+
+ document.getElementById("status").innerText=
+ "Files selected. AI processing will be connected next.";
+}
+</script>
+</body>
+</html>
