@@ -1,21 +1,66 @@
-div id="status"></div>
-</div>
-</div>
 
-<script>
-function startSwap(){
- const photo=document.getElementById("photo").files[0];
- const video=document.getElementById("video").files[0];
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Face Swap</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 30px;
+    }
+    h1 {
+      font-size: 28px;
+    }
+    input, button {
+      margin: 12px;
+      padding: 12px;
+    }
+    button {
+      cursor: pointer;
+    }
+    #status {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
 
- if(!photo || !video){
-   document.getElementById("status").innerText=
-   "Please select both a photo and a video.";
-   return;
- }
+<body>
 
- document.getElementById("status").innerText=
- "Files selected. AI processing will be connected next.";
-}
-</script>
+  <h1>AI Face Swap</h1>
+
+  <p>Select a photo and a video</p>
+
+  <input type="file" id="photo" accept="image/*">
+
+  <br>
+
+  <input type="file" id="video" accept="video/*">
+
+  <br>
+
+  <button onclick="startSwap()">Start Face Swap</button>
+
+  <div id="status"></div>
+
+  <script>
+    function startSwap() {
+      const photo = document.getElementById("photo").files[0];
+      const video = document.getElementById("video").files[0];
+
+      if (!photo || !video) {
+        document.getElementById("status").innerText =
+          "Please select both a photo and a video.";
+        return;
+      }
+
+      document.getElementById("status").innerText =
+        "Files selected. AI processing will be connected next.";
+    }
+  </script>
+
 </body>
 </html>
