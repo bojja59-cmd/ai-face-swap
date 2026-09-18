@@ -1,44 +1,79 @@
-
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Face Swap</title>
+
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      padding: 30px;
+      padding: 25px;
+      background: #f5f5f5;
     }
+
+    .box {
+      max-width: 500px;
+      margin: auto;
+      background: white;
+      padding: 25px;
+      border-radius: 15px;
+    }
+
     h1 {
-      font-size: 28px;
+      margin-bottom: 10px;
     }
-    input, button {
-      margin: 12px;
+
+    input {
+      width: 90%;
+      margin: 12px 0;
       padding: 12px;
     }
+
     button {
-      cursor: pointer;
+      padding: 14px 25px;
+      margin-top: 15px;
+      border: none;
+      border-radius: 8px;
+      background: #111;
+      color: white;
+      font-size: 16px;
     }
+
     #status {
       margin-top: 20px;
       font-weight: bold;
+      word-break: break-word;
+    }
+
+    video {
+      width: 100%;
+      margin-top: 20px;
+      border-radius: 10px;
     }
   </style>
 </head>
 
 <body>
 
+<div class="box">
+
   <h1>AI Face Swap</h1>
 
-  <p>Select a photo and a video</p>
+  <p>Select your face photo and target video</p>
 
-  <input type="file" id="photo" accept="image/*">
+  <input
+    type="file"
+    id="photo"
+    accept="image/png,image/jpeg,image/webp"
+  >
 
-  <br>
-
-  <input type="file" id="video" accept="video/*">
+  <input
+    type="file"
+    id="video"
+    accept="video/mp4,video/quicktime,video/webm"
+  >
 
   <br>
 
@@ -46,21 +81,187 @@
 
   <div id="status"></div>
 
-  <script>
-    function startSwap() {
-      const photo = document.getElementById("photo").files[0];
-      const video = document.getElementById("video").files[0];
+  <div id="result"></div>
 
-      if (!photo || !video) {
-        document.getElementById("status").innerText =
-          "Please select both a photo and a video.";
-        return;
+</div>
+
+<script>
+
+async function startSwap() {
+
+  const photo = document.getElementById("photo").files[0];
+  const video = document.getElementById("video").files[0];
+
+  const status = document.getElementById("status");
+  const result = document.getElementById("result");
+
+  result.innerHTML = "";
+
+  if (!photo || !video) {
+    status.innerText = "Please select both photo and video.";
+    return;
+  }
+
+  try {
+
+    status.innerText = "Preparing upload...";
+
+    // Get upload URLs from our backend
+    const uploadResponse = await fetch("/api/upload", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        photoExtension: getExtension(photo.name),
+        videoExtension: getExtension(video.name)
+      })
+    });
+
+    const uploadData = await uploadResponse.json();
+
+    if (!uploadResponse.ok) {
+      throw new Error(uploadData.error || "Upload preparation failed");
+    }
+
+    status.innerText = "Uploading files...";
+
+    // Upload photo
+    await uploadFile(
+      uploadData.photo.upload_url,
+      photo
+    );
+
+    // Upload video
+    await uploadFile(
+      uploadData.video.upload_url,
+      video
+    );
+
+    status.innerText = "Starting AI face swap...";
+
+    // Create face swap job
+    const swapResponse = await fetch("/api/faceswap", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        image_file_path: uploadData.photo.file_path,
+        video_file_path: uploadData.video.file_path,
+        video_source: "file"
+      })
+    });
+
+    const swapData = await swapResponse.json();
+
+    if (!swapResponse.ok) {
+      throw new Error(swapData.error || "Face swap could not start");
+    }
+
+    status.innerText =
+      "AI processing started. Please wait...";
+
+    // Check result
+    checkStatus(swapData.id);
+
+  } catch (error) {
+
+    status.innerText =
+      "Error: " + error.message;
+
+  }
+}
+
+
+async function uploadFile(uploadUrl, file) {
+
+  const response = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type": file.type
+    },
+    body: file
+  });
+
+  if (!response.ok) {
+    throw new Error("File upload failed");
+  }
+}
+
+
+function getExtension(filename) {
+
+  const parts = filename.split(".");
+
+  return parts[parts.length - 1].toLowerCase();
+
+}
+
+
+async function checkStatus(projectId) {
+
+  const status = document.getElementById("status");
+  const result = document.getElementById("result");
+
+  try {
+
+    const response = await fetch(
+      "/api/status?id=" + encodeURIComponent(projectId)
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Status check failed");
+    }
+
+    if (data.status === "complete") {
+
+      status.innerText = "Face swap completed!";
+
+      if (data.download_url) {
+
+        result.innerHTML =
+          '<br><a href="' +
+          data.download_url +
+          '" target="_blank">' +
+          '<button>Download Result</button>' +
+          '</a>';
+
       }
 
-      document.getElementById("status").innerText =
-        "Files selected. AI processing will be connected next.";
+      return;
     }
-  </script>
+
+    if (
+      data.status === "error" ||
+      data.status === "canceled"
+    ) {
+
+      status.innerText =
+        "Face swap failed: " +
+        (data.error || data.status);
+
+      return;
+    }
+
+    status.innerText =
+      "AI processing... Status: " + data.status;
+
+    setTimeout(function() {
+      checkStatus(projectId);
+    }, 5000);
+
+  } catch (error) {
+
+    status.innerText =
+      "Status error: " + error.message;
+
+  }
+}
+
+</script>
 
 </body>
 </html>
