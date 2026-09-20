@@ -53,8 +53,8 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
-      photo: data[0],
-      video: data[1]
+      photo: data.items[0],
+      video: data.items[1]
     });
 
   } catch (error) {
